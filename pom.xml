@@ -125,7 +125,7 @@
                 <artifactId>vaadin-maven-plugin</artifactId>
                 <version>${vaadin.version}</version>
                 <configuration>
-                    <npmFolder>${project.build.directory}</npmFolder>
+<!--                    <npmFolder>${project.build.directory}</npmFolder>-->
                 </configuration>
                 <executions>
                     <execution>
@@ -161,7 +161,7 @@
                 <artifactId>frontend-maven-plugin</artifactId>
                 <version>${frontend-maven-plugin.version}</version>
                 <configuration>
-                    <installDirectory>target</installDirectory>
+<!--                    <installDirectory>target</installDirectory>-->
                 </configuration>
                 <executions>
                     <execution>
