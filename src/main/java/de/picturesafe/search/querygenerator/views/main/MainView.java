@@ -16,47 +16,16 @@
 
 package de.picturesafe.search.querygenerator.views.main;
 
-import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Route;
 
 @Route
 public class MainView extends VerticalLayout {
 
-	private final TextField addressField;
-	private final Button connectButton;
-	private QueryPanel queryPanel;
+	private final MainPanel mainPanel;
 
-	public MainView() {
-		addressField = new TextField();
-		addressField.setLabel("Elasticsearch address");
-		addressField.setPlaceholder("host:port");
-		addressField.setWidth("300px");
-		addressField.setRequired(true);
-
-		connectButton = new Button();
-		connectButton.setText("connect");
-		connectButton.addClickListener(e -> connect());
-
-		final HorizontalLayout connectPanel = new HorizontalLayout(addressField, connectButton);
-		connectPanel.setVerticalComponentAlignment(Alignment.END, connectButton);
-
-		add(
-				new H2("Elasticsearch Query Generator"),
-				new H3("powered by picturesafe-search"),
-				connectPanel
-		);
-	}
-
-	private void connect() {
-		if (queryPanel != null) {
-			remove(queryPanel);
-		}
-		queryPanel = new QueryPanel(addressField.getValue());
-		add(queryPanel);
+	public MainView(MainPanel mainPanel) {
+		this.mainPanel = mainPanel;
+		add(mainPanel);
 	}
 }

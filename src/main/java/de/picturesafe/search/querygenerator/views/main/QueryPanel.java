@@ -1,54 +1,57 @@
 package de.picturesafe.search.querygenerator.views.main;
 
 import com.vaadin.flow.component.AbstractField;
-import com.vaadin.flow.component.HasComponents;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
-import com.vaadin.flow.component.textfield.TextField;
+import de.picturesafe.search.elasticsearch.ElasticsearchService;
+import de.picturesafe.search.elasticsearch.FieldConfigurationProvider;
+import de.picturesafe.search.elasticsearch.config.FieldConfiguration;
+import org.apache.commons.collections.CollectionUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class QueryPanel extends VerticalLayout {
 
-    private final String elasticsearchAddress;
+    private final ElasticsearchService elasticsearchService;
+    private final FieldConfigurationProvider fieldConfigurationProvider;
 
-    public QueryPanel(String elasticsearchAddress) {
-        this.elasticsearchAddress = elasticsearchAddress;
+	private final List<FieldPanel> fieldPanels = new ArrayList<>();
+    private List<? extends FieldConfiguration> fieldConfigurations;
+
+    public QueryPanel(ElasticsearchService elasticsearchService, FieldConfigurationProvider fieldConfigurationProvider) {
+        this.elasticsearchService = elasticsearchService;
+        this.fieldConfigurationProvider = fieldConfigurationProvider;
         setPadding(false);
-
-        final Select<String> indexSelect = new Select<>("index-1", "index-2", "index-3");
-		indexSelect.setLabel("Index/Alias");
-		indexSelect.setWidth("300px");
-		indexSelect.addValueChangeListener(this::selectIndex);
-		add(indexSelect);
-		indexSelect.focus();
+		add(indexSelector());
     }
+
+	private Select<String> indexSelector() {
+		final List<String> indexNames = new ArrayList<>();
+    	elasticsearchService.listIndices().forEach((name, aliases) -> {
+			if (CollectionUtils.isNotEmpty(aliases)) {
+				indexNames.addAll(aliases);
+			} else {
+				indexNames.add(name);
+			}
+		});
+
+    	final Select<String> indexSelector = new Select<>();
+    	indexSelector.setItems(indexNames);
+		indexSelector.setLabel("Index/Alias");
+		indexSelector.setWidth("300px");
+		indexSelector.addValueChangeListener(this::selectIndex);
+		indexSelector.focus();
+		return indexSelector;
+	}
 
     private void selectIndex(AbstractField.ComponentValueChangeEvent<Select<String>, String> event) {
-		final Select<String> fieldSelect = new Select<>("field-1", "field-2", "field-3");
-		fieldSelect.setLabel("Field");
-		fieldSelect.setWidth("300px");
-		fieldSelect.addValueChangeListener(this::selectField);
+    	fieldPanels.forEach(this::remove);
+    	fieldPanels.clear();
 
-		final HorizontalLayout fieldPanel = new HorizontalLayout(fieldSelect);
-		fieldPanel.setPadding(false);
+    	fieldConfigurations = fieldConfigurationProvider.getFieldConfigurations(event.getValue());
+		final FieldPanel fieldPanel = new FieldPanel(fieldConfigurations);
 		add(fieldPanel);
-		fieldSelect.focus();
+		fieldPanels.add(fieldPanel);
 	}
-
-	private void selectField(AbstractField.ComponentValueChangeEvent<Select<String>, String> event) {
-        final Select<String> expressionSelect = new Select<>("value", "fulltext");
-		expressionSelect.setLabel("Expression");
-		expressionSelect.addValueChangeListener(this::selectExpression);
-		event.getSource().getParent().ifPresent(c -> ((HasComponents) c).add(expressionSelect));
-		expressionSelect.focus();
-	}
-
-	private void selectExpression(AbstractField.ComponentValueChangeEvent<Select<String>, String> event) {
-        final TextField valueField = new TextField();
-        valueField.setLabel("Value");
-        valueField.setPlaceholder("value");
-        valueField.setWidth("300px");
-        event.getSource().getParent().ifPresent(c -> ((HasComponents) c).add(valueField));
-        valueField.focus();
-    }
 }
