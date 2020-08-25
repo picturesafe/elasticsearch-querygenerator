@@ -26,7 +26,6 @@ import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import de.picturesafe.search.elasticsearch.ElasticsearchService;
 import de.picturesafe.search.elasticsearch.FieldConfigurationProvider;
-import de.picturesafe.search.elasticsearch.config.IndexPresetConfiguration;
 import de.picturesafe.search.elasticsearch.config.RestClientConfiguration;
 import de.picturesafe.search.elasticsearch.config.impl.StandardIndexPresetConfiguration;
 import de.picturesafe.search.elasticsearch.connect.Elasticsearch;
@@ -38,7 +37,6 @@ import de.picturesafe.search.elasticsearch.connect.impl.ElasticsearchImpl;
 import de.picturesafe.search.elasticsearch.connect.query.QueryFactory;
 import de.picturesafe.search.elasticsearch.impl.ElasticsearchServiceImpl;
 import de.picturesafe.search.elasticsearch.impl.MappingFieldConfigurationProvider;
-import de.picturesafe.search.elasticsearch.impl.StaticIndexPresetConfigurationProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
@@ -73,12 +71,10 @@ public class MainPanel extends VerticalLayout {
 	private void init() {
 		addressField = new TextField();
 		addressField.setLabel("Elasticsearch address");
-		addressField.setPlaceholder("host:port");
+		addressField.setPlaceholder("localhost:9200");
 		addressField.setWidth("300px");
-		addressField.setRequired(true);
 
-		connectButton = new Button();
-		connectButton.setText("connect");
+		connectButton = new Button("connect");
 		connectButton.addClickListener(e -> connect());
 
 		final HorizontalLayout connectPanel = new HorizontalLayout(addressField, connectButton);
@@ -95,7 +91,8 @@ public class MainPanel extends VerticalLayout {
 		if (queryPanel != null) {
 			remove(queryPanel);
 		}
-		queryPanel = queryPanel(addressField.getValue());
+		final String address = addressField.isEmpty() ? addressField.getPlaceholder() : addressField.getValue();
+		queryPanel = queryPanel(address);
 		add(queryPanel);
 	}
 
@@ -109,9 +106,8 @@ public class MainPanel extends VerticalLayout {
 
 	private ElasticsearchService elasticsearchService(ElasticsearchAdminImpl elasticsearchAdmin, RestClientConfiguration clientConfig,
 													  FieldConfigurationProvider fieldConfigurationProvider) {
-		final IndexPresetConfiguration indexPresetConfiguration = new StandardIndexPresetConfiguration(); // ToDo: Read actual index settings
 		return new ElasticsearchServiceImpl(elasticsearch(elasticsearchAdmin, clientConfig),
-				new StaticIndexPresetConfigurationProvider(indexPresetConfiguration),
+				indexAlias -> new StandardIndexPresetConfiguration(indexAlias, 1, 0),  // ToDo: Read actual index settings
 				fieldConfigurationProvider);
 	}
 
