@@ -38,6 +38,16 @@ public class OperationExpressionPanel extends VerticalLayout implements Expressi
     private void removeExpressionPanel(ExtensibleExpressionPanel panel) {
         remove((Component) panel);
         expressionPanels.remove(panel);
+
+        if (expressionPanels.isEmpty()) {
+            final Button addOperandButton = new Button("+");
+            addOperandButton.addClickListener(e -> {
+                addOperandPanel();
+                remove(addOperandButton);
+            });
+            addOperandButton.setDisableOnClick(true);
+            add(addOperandButton);
+        }
     }
 
     private void addOperationExpressionPanel() {

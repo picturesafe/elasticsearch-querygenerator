@@ -1,8 +1,13 @@
 package de.picturesafe.search.querygenerator.views.main;
 
 import com.vaadin.flow.component.AbstractField;
+import com.vaadin.flow.component.Focusable;
+import com.vaadin.flow.component.HasSize;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.select.Select;
+import com.vaadin.flow.component.textfield.IntegerField;
+import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import de.picturesafe.search.elasticsearch.config.ElasticsearchType;
 import de.picturesafe.search.elasticsearch.config.FieldConfiguration;
@@ -25,7 +30,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel {
 
     private final Select<FieldConfiguration> fieldSelector;
     private Select<ExpressionType> expressionSelector;
-    private final List<TextField> valueFields = new ArrayList<>();
+    private final List<AbstractField<?, ?>> valueFields = new ArrayList<>();
 
     @SuppressWarnings("unchecked")
     public FieldPanel(List<? extends FieldConfiguration> fieldConfigurations) {
@@ -44,9 +49,9 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel {
     private void selectField(AbstractField.ComponentValueChangeEvent<Select<FieldConfiguration>, FieldConfiguration> event) {
         clear();
         final FieldConfiguration fieldConfiguration = event.getValue();
-        final ElasticsearchType type = ElasticsearchType.valueOf(fieldConfiguration.getElasticsearchType().toUpperCase(Locale.ROOT));
-        if (type != ElasticsearchType.OBJECT && type != ElasticsearchType.NESTED && type != ElasticsearchType.COMPLETION) {
-            addExpressionSelector(fieldConfiguration, type);
+        final ElasticsearchType elasticType = ElasticsearchType.valueOf(fieldConfiguration.getElasticsearchType().toUpperCase(Locale.ROOT));
+        if (elasticType != ElasticsearchType.OBJECT && elasticType != ElasticsearchType.NESTED && elasticType != ElasticsearchType.COMPLETION) {
+            addExpressionSelector(fieldConfiguration, elasticType);
         }
 	}
 
@@ -62,12 +67,12 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel {
         valueFields.clear();
     }
 
-    private void addExpressionSelector(FieldConfiguration fieldConfiguration, ElasticsearchType type) {
-        final Set<ExpressionType> expressionTypes = expressionTypes(fieldConfiguration, type);
+    private void addExpressionSelector(FieldConfiguration fieldConfiguration, ElasticsearchType elasticType) {
+        final Set<ExpressionType> expressionTypes = expressionTypes(fieldConfiguration, elasticType);
         expressionSelector = new Select<>();
         expressionSelector.setItems(expressionTypes);
 		expressionSelector.setLabel("Expression");
-        expressionSelector.addValueChangeListener(this::selectExpression);
+        expressionSelector.addValueChangeListener(e -> selectExpression(e.getValue(), elasticType));
         add(expressionSelector);
         expressionSelector.setValue(expressionTypes.stream().findFirst().orElse(null));
     }
@@ -93,34 +98,73 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel {
         }
     }
 
-	private void selectExpression(AbstractField.ComponentValueChangeEvent<Select<ExpressionType>, ExpressionType> event) {
+	private void selectExpression(ExpressionType expressionType, ElasticsearchType elasticType) {
         removeValueFields();
 
-        final ExpressionType type = event.getValue();
-        if (type == ExpressionType.RANGE || type == ExpressionType.DAY_RANGE) {
-            add(valueField("From", true));
-            add(valueField("To", false));
-        } else if (type == ExpressionType.IN) {
-            add(valueField("Values (comma separated)", true));
+        if (expressionType == ExpressionType.RANGE || expressionType == ExpressionType.DAY_RANGE) {
+            addValueField(expressionType, elasticType, "From", true);
+            addValueField(expressionType, elasticType, "To", false);
+        } else if (expressionType == ExpressionType.IN) {
+            addValueField(expressionType, elasticType, "Values (comma separated)", true);
         } else {
-            add(valueField("Value", true));
+            addValueField(expressionType, elasticType, "Value", true);
         }
     }
 
-    private TextField valueField(String label, boolean focus) {
-        final TextField valueField = new TextField();
-        valueField.setLabel(label);
-        valueField.setPlaceholder("value");
-        valueField.setWidth("300px");
-        if (focus) {
-            valueField.focus();
+    private void addValueField(ExpressionType expressionType, ElasticsearchType elasticType, String label, boolean focus) {
+        final AbstractField<?, ?> valueField;
+        switch (expressionType) {
+            case VALUE:
+            case RANGE:
+                if (elasticType == ElasticsearchType.BOOLEAN) {
+                    final Select<Boolean> selector = new Select<>(Boolean.TRUE, Boolean.FALSE);
+                    selector.setValue(Boolean.TRUE);
+                    selector.setLabel(label);
+                    valueField = selector;
+                } else {
+                    valueField = textField(elasticType, label);
+                }
+                break;
+            case DAY:
+            case DAY_RANGE:
+                valueField = new DatePicker(label);
+                break;
+            default:
+                valueField = textField(elasticType, label);
         }
+
+        ((HasSize) valueField).setWidth("300px");
+        if (focus && valueField instanceof Focusable) {
+            ((Focusable<?>) valueField).focus();
+        }
+        add(valueField);
         valueFields.add(valueField);
-        return valueField;
+    }
+
+    private AbstractField<?, ?> textField(ElasticsearchType elasticType, String label) {
+        final AbstractField<?, ?> textField;
+        switch (elasticType) {
+            case LONG:
+            case INTEGER:
+            case SHORT:
+                textField = new IntegerField(label, "0");
+                break;
+            case DOUBLE:
+            case FLOAT:
+                textField = new NumberField(label, "0.0");
+                break;
+            default:
+                textField = new TextField(label, "value");
+        }
+        return textField;
     }
 
     @Override
     public Expression getExpression() {
+        if (fieldSelector.isEmpty()) {
+            return new EmptyExpression();
+        }
+
         final String fieldName = fieldSelector.getValue().getName();
         switch (expressionSelector.getValue()) {
             case VALUE:
@@ -131,7 +175,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel {
             case RANGE:
                 return new RangeValueExpression(fieldName, valueFields.get(0).getValue(), valueFields.get(1).getValue());
             case IN:
-                return new InExpression(fieldName, valueFields.get(0).getValue().split(","));
+                return new InExpression(fieldName, ((String) valueFields.get(0).getValue()).split(","));
             case DAY:
             case DAY_RANGE:
                 // ToDo
