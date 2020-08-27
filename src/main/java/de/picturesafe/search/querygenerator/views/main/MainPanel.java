@@ -21,11 +21,13 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.UIScope;
 import de.picturesafe.search.elasticsearch.ElasticsearchService;
 import de.picturesafe.search.elasticsearch.FieldConfigurationProvider;
+import de.picturesafe.search.elasticsearch.config.FieldConfiguration;
 import de.picturesafe.search.elasticsearch.config.RestClientConfiguration;
 import de.picturesafe.search.elasticsearch.config.impl.StandardIndexPresetConfiguration;
 import de.picturesafe.search.elasticsearch.connect.Elasticsearch;
@@ -37,9 +39,11 @@ import de.picturesafe.search.elasticsearch.connect.impl.ElasticsearchImpl;
 import de.picturesafe.search.elasticsearch.connect.query.QueryFactory;
 import de.picturesafe.search.elasticsearch.impl.ElasticsearchServiceImpl;
 import de.picturesafe.search.elasticsearch.impl.MappingFieldConfigurationProvider;
+import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @SpringComponent
@@ -52,10 +56,10 @@ public class MainPanel extends VerticalLayout {
 	private final AggregationBuilderFactoryRegistry aggregationBuilderFactoryRegistry;
 	private final FacetConverterChain facetConverterChain;
 
+	private HorizontalLayout connectPanel;
 	private TextField addressField;
-	private Button connectButton;
+	private Select<String> indexSelector;
 	private QueryPanel queryPanel;
-
 
 	@Autowired
 	public MainPanel(List<QueryFactory> queryFactories, List<FilterFactory> filterFactories, @Qualifier("elasticsearchTimeZone") String timeZone,
@@ -74,10 +78,10 @@ public class MainPanel extends VerticalLayout {
 		addressField.setPlaceholder("localhost:9200");
 		addressField.setWidth("300px");
 
-		connectButton = new Button("connect");
+		final Button connectButton = new Button("connect");
 		connectButton.addClickListener(e -> connect());
 
-		final HorizontalLayout connectPanel = new HorizontalLayout(addressField, connectButton);
+		connectPanel = new HorizontalLayout(addressField, connectButton);
 		connectPanel.setVerticalComponentAlignment(Alignment.END, connectButton);
 
 		add(
@@ -88,20 +92,30 @@ public class MainPanel extends VerticalLayout {
 	}
 
 	private void connect() {
-		if (queryPanel != null) {
-			remove(queryPanel);
-		}
-		final String address = addressField.isEmpty() ? addressField.getPlaceholder() : addressField.getValue();
-		queryPanel = queryPanel(address);
-		add(queryPanel);
+		clear();
+		final ElasticsearchConnection connection = createConnection();
+		indexSelector = indexSelector(connection);
+		connectPanel.add(indexSelector);
 	}
 
-	private QueryPanel queryPanel(String elasticsearchAddress) {
+	private void clear() {
+		if (indexSelector != null) {
+			connectPanel.remove(indexSelector);
+			indexSelector = null;
+		}
+		if (queryPanel != null) {
+			remove(queryPanel);
+			queryPanel = null;
+		}
+	}
+
+	private ElasticsearchConnection createConnection() {
+		final String elasticsearchAddress = addressField.isEmpty() ? addressField.getPlaceholder() : addressField.getValue();
 		final RestClientConfiguration clientConfig = new RestClientConfiguration(elasticsearchAddress);
     	final ElasticsearchAdminImpl elasticsearchAdmin = new ElasticsearchAdminImpl(clientConfig);
     	elasticsearchAdmin.init();
 		final MappingFieldConfigurationProvider fieldConfigurationProvider = new MappingFieldConfigurationProvider(elasticsearchAdmin);
-		return new QueryPanel(elasticsearchService(elasticsearchAdmin, clientConfig, fieldConfigurationProvider), fieldConfigurationProvider);
+		return new ElasticsearchConnection(elasticsearchService(elasticsearchAdmin, clientConfig, fieldConfigurationProvider), fieldConfigurationProvider);
 	}
 
 	private ElasticsearchService elasticsearchService(ElasticsearchAdminImpl elasticsearchAdmin, RestClientConfiguration clientConfig,
@@ -117,5 +131,44 @@ public class MainPanel extends VerticalLayout {
 		elasticsearch.setFacetConverterChain(facetConverterChain);
 		elasticsearch.init();
 		return elasticsearch;
+	}
+
+	private Select<String> indexSelector(ElasticsearchConnection connection) {
+		final List<String> indexNames = new ArrayList<>();
+    	connection.elasticsearchService.listIndices().forEach((name, aliases) -> {
+			if (CollectionUtils.isNotEmpty(aliases)) {
+				indexNames.addAll(aliases);
+			} else {
+				indexNames.add(name);
+			}
+		});
+
+    	final Select<String> indexSelector = new Select<>();
+    	indexSelector.setItems(indexNames);
+		indexSelector.setLabel("Index/Alias");
+		indexSelector.setWidth("300px");
+		indexSelector.addValueChangeListener(e -> selectIndex(connection, e.getValue()));
+		indexSelector.focus();
+		return indexSelector;
+	}
+
+    private void selectIndex(ElasticsearchConnection connection, String indexAlias) {
+		if (queryPanel != null) {
+			remove(queryPanel);
+		}
+    	final List<? extends FieldConfiguration> fieldConfigurations = connection.fieldConfigurationProvider.getFieldConfigurations(indexAlias);
+		queryPanel =new QueryPanel(connection.elasticsearchService, indexSelector.getValue(), fieldConfigurations);
+		add(queryPanel);
+	}
+
+	private static class ElasticsearchConnection {
+
+		final ElasticsearchService elasticsearchService;
+		final FieldConfigurationProvider fieldConfigurationProvider;
+
+		public ElasticsearchConnection(ElasticsearchService elasticsearchService, FieldConfigurationProvider fieldConfigurationProvider) {
+			this.elasticsearchService = elasticsearchService;
+			this.fieldConfigurationProvider = fieldConfigurationProvider;
+		}
 	}
 }

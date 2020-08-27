@@ -2,6 +2,8 @@ package de.picturesafe.search.querygenerator.views.main;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.contextmenu.ContextMenu;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
@@ -14,35 +16,39 @@ import java.util.List;
 
 public class OperationExpressionPanel extends VerticalLayout implements ExpressionPanel {
 
-    private Select<OperationExpression.Operator> operatorSelector;
+    private final HorizontalLayout operatorPanel;
+    private final Select<OperationExpression.Operator> operatorSelector;
     private final List<? extends FieldConfiguration> fieldConfigurations;
-    private final List<ExtensibleExpressionPanel> expressionPanels = new ArrayList<>();
+    private final List<ExpressionPanel> expressionPanels = new ArrayList<>();
 
     public OperationExpressionPanel(List<? extends FieldConfiguration> fieldConfigurations) {
         this.fieldConfigurations = fieldConfigurations;
         operatorSelector = new Select<>(OperationExpression.Operator.AND, OperationExpression.Operator.OR);
         operatorSelector.setValue(OperationExpression.Operator.AND);
         operatorSelector.setLabel("Operator");
-        add(operatorSelector);
-        addOperandPanel();
+        operatorSelector.getStyle().set("margin-right", "auto");
+
+        operatorPanel = new HorizontalLayout(operatorSelector);
+        operatorPanel.setWidth("100%");
+        add(operatorPanel);
+        addOperandPanelAfter(operatorPanel);
         getStyle().set("border","1px solid grey");
     }
 
-    private void addOperandPanel() {
-        expressionPanels.forEach(ExtensibleExpressionPanel::removeAddButtons);
+    private void addOperandPanelAfter(Component component) {
         final OperandPanel operandPanel = new OperandPanel();
-        add(operandPanel);
+        addComponentAtIndex(indexOf(component) + 1, operandPanel);
         expressionPanels.add(operandPanel);
     }
 
-    private void removeExpressionPanel(ExtensibleExpressionPanel panel) {
+    private void removeExpressionPanel(ExpressionPanel panel) {
         remove((Component) panel);
         expressionPanels.remove(panel);
 
         if (expressionPanels.isEmpty()) {
             final Button addOperandButton = new Button("+");
             addOperandButton.addClickListener(e -> {
-                addOperandPanel();
+                addOperandPanelAfter(operatorPanel);
                 remove(addOperandButton);
             });
             addOperandButton.setDisableOnClick(true);
@@ -50,10 +56,9 @@ public class OperationExpressionPanel extends VerticalLayout implements Expressi
         }
     }
 
-    private void addOperationExpressionPanel() {
-        expressionPanels.forEach(ExtensibleExpressionPanel::removeAddButtons);
+    private void addOperationExpressionPanelAfter(Component component) {
         final InnerOperationExpressionPanel operationExpressionPanel = new InnerOperationExpressionPanel(this);
-        add(operationExpressionPanel);
+        addComponentAtIndex(indexOf(component) + 1, operationExpressionPanel);
         expressionPanels.add(operationExpressionPanel);
     }
 
@@ -64,44 +69,23 @@ public class OperationExpressionPanel extends VerticalLayout implements Expressi
         return operationExpression;
     }
 
-    private class OperandPanel extends HorizontalLayout implements ExtensibleExpressionPanel {
+    private class OperandPanel extends HorizontalLayout implements ExpressionPanel {
 
         final FieldPanel fieldPanel;
-        Button removeButton;
-        Button addOperandButton;
-        Button addOperationExpressionButton;
 
         OperandPanel() {
             fieldPanel = new FieldPanel(fieldConfigurations);
             add(fieldPanel);
 
-            removeButton = new Button("-");
-            removeButton.addClickListener(e -> removeExpressionPanel(this));
-            add(removeButton);
-
-            addOperandButton = new Button("+");
-            addOperandButton.addClickListener(e -> addOperandPanel());
-            addOperandButton.setDisableOnClick(true);
-            add(addOperandButton);
-
-            addOperationExpressionButton = new Button("++");
-            addOperationExpressionButton.addClickListener(e -> addOperationExpressionPanel());
-            addOperationExpressionButton.setDisableOnClick(true);
-            add(addOperationExpressionButton);
-
-            setVerticalComponentAlignment(Alignment.END, removeButton, addOperandButton, addOperationExpressionButton);
-        }
-
-        @Override
-        public void removeAddButtons() {
-            if (addOperandButton != null) {
-                remove(addOperandButton);
-                addOperandButton = null;
-            }
-            if (addOperationExpressionButton != null) {
-                remove(addOperationExpressionButton);
-                addOperationExpressionButton = null;
-            }
+            final ContextMenu menu = new ContextMenu();
+            menu.addItem("Add field", e -> addOperandPanelAfter(this));
+            menu.addItem("Add operation", e -> addOperationExpressionPanelAfter(this));
+            menu.addItem("Remove field", e -> removeExpressionPanel(this));
+            final Button menuButton = new Button(VaadinIcon.CARET_UP.create());
+            menu.setTarget(menuButton);
+            menu.setOpenOnClick(true);
+            add(menuButton);
+            setVerticalComponentAlignment(Alignment.END, menuButton);
         }
 
         @Override
@@ -110,13 +94,10 @@ public class OperationExpressionPanel extends VerticalLayout implements Expressi
         }
     }
 
-    private class InnerOperationExpressionPanel extends HorizontalLayout implements ExtensibleExpressionPanel {
+    private class InnerOperationExpressionPanel extends HorizontalLayout implements ExpressionPanel {
 
         final OperationExpressionPanel parent;
         final OperationExpressionPanel operationExpressionPanel;
-        Button removeButton;
-        Button addOperandButton;
-        Button addOperationExpressionButton;
 
         public InnerOperationExpressionPanel(OperationExpressionPanel parent) {
             this.parent = parent;
@@ -124,34 +105,16 @@ public class OperationExpressionPanel extends VerticalLayout implements Expressi
             operationExpressionPanel = new OperationExpressionPanel(fieldConfigurations);
             add(operationExpressionPanel);
 
-            removeButton = new Button("--");
-            removeButton.addClickListener(e -> parent.removeExpressionPanel(this));
-            add(removeButton);
+            final ContextMenu menu = new ContextMenu();
+            menu.addItem("Add field", e -> addOperandPanelAfter(this));
+            menu.addItem("Add operation", e -> addOperationExpressionPanelAfter(this));
+            menu.addItem("Remove operation", e -> removeExpressionPanel(this));
+            final Button menuButton = new Button(VaadinIcon.CARET_SQUARE_UP_O.create());
+            menu.setTarget(menuButton);
+            menu.setOpenOnClick(true);
+            operationExpressionPanel.operatorPanel.add(menuButton);
 
-            addOperandButton = new Button("+");
-            addOperandButton.addClickListener(e -> parent.addOperandPanel());
-            addOperandButton.setDisableOnClick(true);
-            add(addOperandButton);
-
-            addOperationExpressionButton = new Button("++");
-            addOperationExpressionButton.addClickListener(e -> parent.addOperationExpressionPanel());
-            addOperationExpressionButton.setDisableOnClick(true);
-            add(addOperationExpressionButton);
-
-            setVerticalComponentAlignment(Alignment.END, removeButton, addOperandButton, addOperationExpressionButton);
             setPadding(true);
-        }
-
-        @Override
-        public void removeAddButtons() {
-            if (addOperandButton != null) {
-                remove(addOperandButton);
-                addOperandButton = null;
-            }
-            if (addOperationExpressionButton != null) {
-                remove(addOperationExpressionButton);
-                addOperationExpressionButton = null;
-            }
         }
 
         @Override
