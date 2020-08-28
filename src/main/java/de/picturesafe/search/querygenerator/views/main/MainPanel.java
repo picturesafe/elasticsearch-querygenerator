@@ -157,7 +157,7 @@ public class MainPanel extends VerticalLayout implements QueryLayout {
 			remove(queryPanel);
 		}
     	final List<? extends FieldConfiguration> fieldConfigurations = connection.fieldConfigurationProvider.getFieldConfigurations(indexAlias);
-		queryPanel =new QueryPanel(connection.elasticsearchService, indexSelector.getValue(), fieldConfigurations);
+		queryPanel = new QueryPanel(connection.elasticsearchService, indexSelector.getValue(), fieldConfigurations);
 		add(queryPanel);
 	}
 
@@ -166,7 +166,7 @@ public class MainPanel extends VerticalLayout implements QueryLayout {
 		final ElasticsearchService elasticsearchService;
 		final FieldConfigurationProvider fieldConfigurationProvider;
 
-		public ElasticsearchConnection(ElasticsearchService elasticsearchService, FieldConfigurationProvider fieldConfigurationProvider) {
+		ElasticsearchConnection(ElasticsearchService elasticsearchService, FieldConfigurationProvider fieldConfigurationProvider) {
 			this.elasticsearchService = elasticsearchService;
 			this.fieldConfigurationProvider = fieldConfigurationProvider;
 		}

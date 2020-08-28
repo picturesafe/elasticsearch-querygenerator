@@ -21,17 +21,12 @@ import de.picturesafe.search.elasticsearch.IndexPresetConfigurationProvider;
 import de.picturesafe.search.elasticsearch.config.impl.StandardIndexPresetConfiguration;
 import de.picturesafe.search.elasticsearch.impl.StaticFieldConfigurationProvider;
 import de.picturesafe.search.elasticsearch.impl.StaticIndexPresetConfigurationProvider;
-import de.picturesafe.search.spring.configuration.DefaultAggregationConfiguration;
-import de.picturesafe.search.spring.configuration.DefaultClientConfiguration;
-import de.picturesafe.search.spring.configuration.DefaultQueryConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 
 import java.util.Collections;
 
 @Configuration
-@Import({DefaultClientConfiguration.class, DefaultQueryConfiguration.class, DefaultAggregationConfiguration.class})
 public class ElasticsearchConfiguration {
 
     @Bean

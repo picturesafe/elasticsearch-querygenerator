@@ -32,7 +32,7 @@ public class OperationExpressionPanel extends VerticalLayout implements Expressi
         operatorPanel.setWidth("100%");
         add(operatorPanel);
         addOperandPanelAfter(operatorPanel);
-        getStyle().set("border","1px solid grey");
+        getStyle().set("border", "1px solid grey");
     }
 
     private void addOperandPanelAfter(Component component) {
@@ -99,7 +99,7 @@ public class OperationExpressionPanel extends VerticalLayout implements Expressi
         final OperationExpressionPanel parent;
         final OperationExpressionPanel operationExpressionPanel;
 
-        public InnerOperationExpressionPanel(OperationExpressionPanel parent) {
+        InnerOperationExpressionPanel(OperationExpressionPanel parent) {
             this.parent = parent;
 
             operationExpressionPanel = new OperationExpressionPanel(fieldConfigurations);
