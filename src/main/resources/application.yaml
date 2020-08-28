@@ -1,0 +1,8 @@
+# Server configuration
+server:
+  host: 127.0.0.1
+  port: 8080
+
+# Logging configuration
+logging.level.ROOT: INFO
+logging.level.de.picturesafe: INFO
