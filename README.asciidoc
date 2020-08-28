@@ -1,0 +1,51 @@
+:imagesdir: img/
+
+= Elasticsearch Query Generator
+
+The Elasticsearch Query Generator is a Spring Boot application to simplify the creation of Elasticsearch queries. It is based on
+https://github.com/picturesafe/picturesafe-search[picturesafe-search] and the
+https://github.com/picturesafe/picturesafe-search-starter[picturesafe-search Spring Boot starter] modules. To visualize the creation of Elasticsearch queries,
+it uses the https://vaadin.com/[vaadin] UI framework.
+
+image::screenshot.png[Screenshot]
+
+== Requirements
+
+- Java 11
+- Maven 3.x
+
+== Building the application
+
+In the project root directory run the following command:
+
+[source]
+----
+mvn package
+----
+
+== Running the application
+
+In the project root directory run the following command:
+
+[source]
+----
+mvn spring-boot:run
+----
+
+*OR*
+
+If you built the application via ``mvn package``, change to the ``target`` directory and start the application using the following command:
+
+[source]
+----
+java -jar elasticsearch-querygenerator-<VERSION>.jar
+----
+
+== Usage
+
+1. Open http://localhost:8080[http://localhost:8080] in your Browser.
+2. Enter the Elasticsearch cluster to connect to in the format ``host:port`` (localhost:9200) is pre-selected.
+3. Click the ``connect`` button.
+4. Choose the index/alias you want to query.
+5. Choose fields expressions and values for your query. Use the arrow up ``^`` button for add or remove actions.
+6. Click the ``Query`` button to create the Elasticsearch query JSON.
