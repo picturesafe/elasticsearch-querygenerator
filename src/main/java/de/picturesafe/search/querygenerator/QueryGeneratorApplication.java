@@ -18,13 +18,8 @@ package de.picturesafe.search.querygenerator;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-@ComponentScan(basePackages = {
-    "de.picturesafe.search.querygenerator",
-    "de.picturesafe.search.elasticsearch"
-})
 public class QueryGeneratorApplication {
 
     public static void main(String[] args) {
