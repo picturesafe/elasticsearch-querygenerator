@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-public class FieldPanel extends HorizontalLayout implements ExpressionPanel {
+public class FieldPanel extends HorizontalLayout implements ExpressionPanel, QueryLayout {
 
     private enum ExpressionType {VALUE, QUERY_STRING, KEYWORD, RANGE, IN, DAY, DAY_RANGE}
 
@@ -45,7 +45,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel {
         fieldSelector.setItemLabelGenerator(FieldConfiguration::getName);
         fieldSelector.setItems((List<FieldConfiguration>) fieldConfigurations);
 		fieldSelector.setLabel("Field");
-		fieldSelector.setWidth("300px");
+		fieldSelector.setWidth(FIELD_WIDTH);
 		fieldSelector.addValueChangeListener(this::selectField);
 
 		add(fieldSelector);
@@ -144,7 +144,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel {
                 valueField = textField(elasticType, label);
         }
 
-        ((HasSize) valueField).setWidth("300px");
+        ((HasSize) valueField).setWidth(FIELD_WIDTH);
         if (focus && valueField instanceof Focusable) {
             ((Focusable<?>) valueField).focus();
         }

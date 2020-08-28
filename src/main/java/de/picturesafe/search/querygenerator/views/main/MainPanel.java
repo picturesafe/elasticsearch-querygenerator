@@ -48,7 +48,7 @@ import java.util.List;
 
 @SpringComponent
 @UIScope
-public class MainPanel extends VerticalLayout {
+public class MainPanel extends VerticalLayout implements QueryLayout {
 
 	private final List<QueryFactory> queryFactories;
 	private final List<FilterFactory> filterFactories;
@@ -76,7 +76,7 @@ public class MainPanel extends VerticalLayout {
 		addressField = new TextField();
 		addressField.setLabel("Elasticsearch address");
 		addressField.setPlaceholder("localhost:9200");
-		addressField.setWidth("300px");
+		addressField.setWidth(FIELD_WIDTH);
 
 		final Button connectButton = new Button("connect");
 		connectButton.addClickListener(e -> connect());
@@ -146,7 +146,7 @@ public class MainPanel extends VerticalLayout {
     	final Select<String> indexSelector = new Select<>();
     	indexSelector.setItems(indexNames);
 		indexSelector.setLabel("Index/Alias");
-		indexSelector.setWidth("300px");
+		indexSelector.setWidth(FIELD_WIDTH);
 		indexSelector.addValueChangeListener(e -> selectIndex(connection, e.getValue()));
 		indexSelector.focus();
 		return indexSelector;

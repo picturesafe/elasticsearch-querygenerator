@@ -10,7 +10,7 @@ import de.picturesafe.search.parameter.SearchParameter;
 
 import java.util.List;
 
-public class QueryPanel extends VerticalLayout {
+public class QueryPanel extends VerticalLayout implements QueryLayout {
 
     private final ElasticsearchService elasticsearchService;
     private final String indexAlias;
@@ -34,8 +34,8 @@ public class QueryPanel extends VerticalLayout {
 	private void generateQuery() {
 		if (queryText == null) {
 			queryText = new TextArea("Query");
-			queryText.setWidth("100%");
-			queryText.setHeight("400px");
+			queryText.setWidth(QUERY_TEXT_WIDTH);
+			queryText.setHeight(QUERY_TEXT_HEIGHT);
 			queryText.setReadOnly(true);
 			add(queryText);
 		}
