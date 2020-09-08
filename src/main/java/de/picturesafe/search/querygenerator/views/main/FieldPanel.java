@@ -11,6 +11,7 @@ import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import de.picturesafe.search.elasticsearch.config.ElasticsearchType;
 import de.picturesafe.search.elasticsearch.config.FieldConfiguration;
+import de.picturesafe.search.expression.BoostableExpression;
 import de.picturesafe.search.expression.DayExpression;
 import de.picturesafe.search.expression.DayRangeExpression;
 import de.picturesafe.search.expression.Expression;
@@ -38,6 +39,8 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
     private final Select<FieldConfiguration> fieldSelector;
     private Select<ExpressionType> expressionSelector;
     private final List<AbstractField<?, ?>> valueFields = new ArrayList<>();
+    private NumberField boostField;
+    private final Set<ExpressionType> boostableExpressions = EnumSet.of(ExpressionType.VALUE, ExpressionType.QUERY_STRING, ExpressionType.IN);
 
     @SuppressWarnings("unchecked")
     public FieldPanel(List<? extends FieldConfiguration> fieldConfigurations) {
@@ -70,12 +73,16 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         if (expressionSelector != null) {
             remove(expressionSelector);
         }
-        removeValueFields();
+        removeFields();
     }
 
-    private void removeValueFields() {
+    private void removeFields() {
         valueFields.forEach(this::remove);
         valueFields.clear();
+        if (boostField != null) {
+            remove(boostField);
+            boostField = null;
+        }
     }
 
     private void addExpressionSelector(FieldConfiguration fieldConfiguration, ElasticsearchType elasticType) {
@@ -110,7 +117,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
     }
 
 	private void selectExpression(ExpressionType expressionType, ElasticsearchType elasticType) {
-        removeValueFields();
+        removeFields();
 
         if (expressionType == ExpressionType.RANGE || expressionType == ExpressionType.DAY_RANGE) {
             addValueField(expressionType, elasticType, "From", true);
@@ -119,6 +126,10 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
             addValueField(expressionType, ElasticsearchType.TEXT, "Values (comma separated)", true);
         } else {
             addValueField(expressionType, elasticType, "Value", true);
+        }
+
+        if (boostableExpressions.contains(expressionType)) {
+            addBoostField();
         }
     }
 
@@ -170,6 +181,16 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         return textField;
     }
 
+    private void addBoostField() {
+        boostField = new NumberField("Boost");
+        boostField.setWidth("50px");
+        boostField.setMin(0.1);
+        boostField.setMax(10.0);
+        boostField.setStep(0.1);
+        boostField.setErrorMessage("Set number from 0.1 to 10.0");
+        add(boostField);
+    }
+
     @Override
     public Expression getExpression() {
         if (fieldSelector.isEmpty()) {
@@ -177,24 +198,36 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         }
 
         final String fieldName = fieldSelector.getValue().getName();
+        final Expression expression;
         switch (expressionSelector.getValue()) {
             case VALUE:
-                return isEmptyValue(0) ? new IsNullExpression(fieldName) : new ValueExpression(fieldName, value(0));
+                expression = isEmptyValue(0) ? new IsNullExpression(fieldName) : new ValueExpression(fieldName, value(0));
+                break;
             case QUERY_STRING:
-                return new ValueExpression(fieldName, stringValue(0));
+                expression = new ValueExpression(fieldName, stringValue(0));
+                break;
             case KEYWORD:
-                return isEmptyValue(0) ? new IsNullExpression(fieldName) : new KeywordExpression(fieldName, stringValue(0));
+                expression = isEmptyValue(0) ? new IsNullExpression(fieldName) : new KeywordExpression(fieldName, stringValue(0));
+                break;
             case RANGE:
-                return new RangeValueExpression(fieldName, value(0), value(1));
+                expression = new RangeValueExpression(fieldName, value(0), value(1));
+                break;
             case IN:
-                return isEmptyValue(0) ? new IsNullExpression(fieldName) : new InExpression(fieldName, inValues(0));
+                expression = isEmptyValue(0) ? new IsNullExpression(fieldName) : new InExpression(fieldName, inValues(0));
+                break;
             case DAY:
-                return isEmptyValue(0) ? new IsNullExpression(fieldName) : new DayExpression(fieldName, dateValue(0));
+                expression = isEmptyValue(0) ? new IsNullExpression(fieldName) : new DayExpression(fieldName, dateValue(0));
+                break;
             case DAY_RANGE:
-                return new DayRangeExpression(fieldName, dateValue(0), dateValue(1));
+                expression = new DayRangeExpression(fieldName, dateValue(0), dateValue(1));
+                break;
             default:
-                return new EmptyExpression();
+                expression = new EmptyExpression();
         }
+
+        return (hasBoost() && expression instanceof BoostableExpression)
+                ? ((BoostableExpression<?>) expression).boost(boostField.getValue().floatValue())
+                : expression;
     }
 
     private boolean isEmptyValue(int index) {
@@ -231,5 +264,9 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
             default:
                 return values;
         }
+    }
+
+    private boolean hasBoost() {
+        return boostField != null && boostField.getValue() != null;
     }
 }
