@@ -31,6 +31,12 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.BOOLEAN;
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.COMPLETION;
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.NESTED;
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.OBJECT;
 
 public class FieldPanel extends HorizontalLayout implements ExpressionPanel, QueryLayout {
 
@@ -46,7 +52,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
     public FieldPanel(List<? extends FieldConfiguration> fieldConfigurations) {
         fieldSelector = new Select<>();
         fieldSelector.setItemLabelGenerator(FieldConfiguration::getName);
-        fieldSelector.setItems((List<FieldConfiguration>) fieldConfigurations);
+        fieldSelector.setItems(filterSupportedTypes(fieldConfigurations));
 		fieldSelector.setLabel("Field");
 		fieldSelector.setWidth(FIELD_WIDTH);
 		fieldSelector.addValueChangeListener(this::selectField);
@@ -56,18 +62,23 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
 		fieldSelector.focus();
     }
 
-    private void selectField(AbstractField.ComponentValueChangeEvent<Select<FieldConfiguration>, FieldConfiguration> event) {
-        clear();
-        final FieldConfiguration fieldConfiguration = event.getValue();
+    private List<FieldConfiguration> filterSupportedTypes(List<? extends FieldConfiguration> fieldConfigurations) {
+        return fieldConfigurations.stream().filter(this::isSupported).collect(Collectors.toList());
+    }
+
+    private boolean isSupported(FieldConfiguration fieldConfiguration) {
         final ElasticsearchType elasticType = elasticType(fieldConfiguration);
-        if (elasticType != ElasticsearchType.OBJECT && elasticType != ElasticsearchType.NESTED && elasticType != ElasticsearchType.COMPLETION) {
-            addExpressionSelector(fieldConfiguration, elasticType);
-        }
-	}
+        return elasticType != NESTED && elasticType != OBJECT && elasticType != COMPLETION;
+    }
 
     private ElasticsearchType elasticType(FieldConfiguration fieldConfiguration) {
         return ElasticsearchType.valueOf(fieldConfiguration.getElasticsearchType().toUpperCase(Locale.ROOT));
     }
+
+    private void selectField(AbstractField.ComponentValueChangeEvent<Select<FieldConfiguration>, FieldConfiguration> event) {
+        clear();
+        addExpressionSelector(event.getValue());
+	}
 
 	private void clear() {
         if (expressionSelector != null) {
@@ -85,7 +96,8 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         }
     }
 
-    private void addExpressionSelector(FieldConfiguration fieldConfiguration, ElasticsearchType elasticType) {
+    private void addExpressionSelector(FieldConfiguration fieldConfiguration) {
+        final ElasticsearchType elasticType = elasticType(fieldConfiguration);
         final Set<ExpressionType> expressionTypes = expressionTypes(fieldConfiguration, elasticType);
         expressionSelector = new Select<>();
         expressionSelector.setItems(expressionTypes);
@@ -138,7 +150,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         switch (expressionType) {
             case VALUE:
             case RANGE:
-                if (elasticType == ElasticsearchType.BOOLEAN) {
+                if (elasticType == BOOLEAN) {
                     final Select<Boolean> selector = new Select<>(Boolean.TRUE, Boolean.FALSE);
                     selector.setValue(Boolean.TRUE);
                     selector.setLabel(label);
