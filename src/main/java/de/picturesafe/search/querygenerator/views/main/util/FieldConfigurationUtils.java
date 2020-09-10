@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
-package de.picturesafe.search.querygenerator.views.info;
+package de.picturesafe.search.querygenerator.views.main.util;
 
-import com.vaadin.flow.component.Text;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.Route;
+import de.picturesafe.search.elasticsearch.config.ElasticsearchType;
+import de.picturesafe.search.elasticsearch.config.FieldConfiguration;
 
-@Route("info")
-public class InfoView extends VerticalLayout {
+import java.util.Locale;
 
-	public InfoView() {
-		add(new Text("Todo..."));
-	}
+public class FieldConfigurationUtils {
+
+    private FieldConfigurationUtils() {
+    }
+
+    public static ElasticsearchType elasticType(FieldConfiguration fieldConfiguration) {
+        return ElasticsearchType.valueOf(fieldConfiguration.getElasticsearchType().toUpperCase(Locale.ROOT));
+    }
 }

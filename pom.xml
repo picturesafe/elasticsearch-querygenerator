@@ -62,7 +62,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 
         <spring-boot.version>2.2.7.RELEASE</spring-boot.version>
-        <picturesafe-search-spring-boot-starter.version>3.6.0-SNAPSHOT</picturesafe-search-spring-boot-starter.version>
+        <picturesafe-search-spring-boot-starter.version>3.5.1</picturesafe-search-spring-boot-starter.version>
         <vaadin.version>16.0.0</vaadin.version>
         <frontend-maven-plugin.version>1.9.1</frontend-maven-plugin.version>
     </properties>
