@@ -36,12 +36,14 @@ import de.picturesafe.search.elasticsearch.connect.aggregation.search.Aggregatio
 import de.picturesafe.search.elasticsearch.connect.filter.FilterFactory;
 import de.picturesafe.search.elasticsearch.connect.impl.ElasticsearchAdminImpl;
 import de.picturesafe.search.elasticsearch.connect.impl.ElasticsearchImpl;
+import de.picturesafe.search.elasticsearch.connect.impl.MissingValueSortPosition;
 import de.picturesafe.search.elasticsearch.connect.query.QueryFactory;
 import de.picturesafe.search.elasticsearch.impl.ElasticsearchServiceImpl;
 import de.picturesafe.search.elasticsearch.impl.MappingFieldConfigurationProvider;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +62,15 @@ public class MainPanel extends VerticalLayout implements QueryLayout {
 	private TextField addressField;
 	private Select<String> indexSelector;
 	private QueryPanel queryPanel;
+
+	// Workaround for missing values because the ElasticsearchImpl instances are created dynamically and not via the Spring context.
+	@Value("${elasticsearch.service.check_cluster_status_timeout:10000}")
+    protected long checkClusterStatusTimeout;
+    @Value("${elasticsearch.service.indexing_bulk_size:1000}")
+    protected int indexingBulkSize;
+    @Value("${elasticsearch.service.missing_value_sort_position:LAST}")
+    protected MissingValueSortPosition missingValueSortPosition;
+
 
 	@Autowired
 	public MainPanel(List<QueryFactory> queryFactories, List<FilterFactory> filterFactories, @Qualifier("elasticsearchTimeZone") String timeZone,
@@ -129,6 +140,9 @@ public class MainPanel extends VerticalLayout implements QueryLayout {
 		final ElasticsearchImpl elasticsearch = new ElasticsearchImpl(elasticsearchAdmin, clientConfig, queryFactories, filterFactories, timeZone);
 		elasticsearch.setAggregationBuilderFactoryRegistry(aggregationBuilderFactoryRegistry);
 		elasticsearch.setFacetConverterChain(facetConverterChain);
+		elasticsearch.setCheckClusterStatusTimeout(checkClusterStatusTimeout);
+		elasticsearch.setIndexingBulkSize(indexingBulkSize);
+		elasticsearch.setMissingValueSortPosition(missingValueSortPosition);
 		elasticsearch.init();
 		return elasticsearch;
 	}
