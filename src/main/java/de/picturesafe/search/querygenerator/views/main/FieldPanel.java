@@ -42,6 +42,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
@@ -57,6 +58,8 @@ import static de.picturesafe.search.querygenerator.views.main.util.FieldConfigur
 public class FieldPanel extends HorizontalLayout implements ExpressionPanel, QueryLayout {
 
     private enum ExpressionType {VALUE, QUERY_STRING, KEYWORD, RANGE, IN, DAY, DAY_RANGE}
+
+    private final static Set<ElasticsearchType> UNSUPPORTED_ELASTIC_TYPES = EnumSet.of(NESTED, OBJECT, COMPLETION);
 
     private final Select<FieldConfiguration> fieldSelector;
     private Select<ExpressionType> expressionSelector;
@@ -79,12 +82,11 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
     }
 
     private List<FieldConfiguration> filterSupportedTypes(List<? extends FieldConfiguration> fieldConfigurations) {
-        return fieldConfigurations.stream().filter(this::isSupported).collect(Collectors.toList());
+        return fieldConfigurations.stream().filter(this::isSupported).sorted(Comparator.comparing(FieldConfiguration::getName)).collect(Collectors.toList());
     }
 
     private boolean isSupported(FieldConfiguration fieldConfiguration) {
-        final ElasticsearchType elasticType = elasticType(fieldConfiguration);
-        return elasticType != NESTED && elasticType != OBJECT && elasticType != COMPLETION;
+        return !UNSUPPORTED_ELASTIC_TYPES.contains(elasticType(fieldConfiguration));
     }
 
     private void selectField(AbstractField.ComponentValueChangeEvent<Select<FieldConfiguration>, FieldConfiguration> event) {

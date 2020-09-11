@@ -24,13 +24,19 @@ import de.picturesafe.search.elasticsearch.config.FieldConfiguration;
 import de.picturesafe.search.parameter.SortOption;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.COMPLETION;
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.NESTED;
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.OBJECT;
 import static de.picturesafe.search.querygenerator.views.main.util.FieldConfigurationUtils.elasticType;
 
 public class SortOptionPanel extends HorizontalLayout implements QueryLayout {
 
+    private final static Set<ElasticsearchType> UNSUPPORTED_ELASTIC_TYPES = EnumSet.of(NESTED, OBJECT, COMPLETION);
     private static final String RELEVANCE_LABEL = "<Relevance>";
 
     private final Select<String> sortSelector;
@@ -50,15 +56,7 @@ public class SortOptionPanel extends HorizontalLayout implements QueryLayout {
     }
 
     private boolean isSupported(FieldConfiguration fieldConfiguration) {
-        final ElasticsearchType elasticType = elasticType(fieldConfiguration);
-        switch (elasticType) {
-            case NESTED:
-            case OBJECT:
-            case COMPLETION:
-                return false;
-            default:
-                return fieldConfiguration.isSortable();
-        }
+        return !UNSUPPORTED_ELASTIC_TYPES.contains(elasticType(fieldConfiguration)) && fieldConfiguration.isSortable();
     }
 
     private void selectSort(AbstractField.ComponentValueChangeEvent<Select<String>, String> event) {
