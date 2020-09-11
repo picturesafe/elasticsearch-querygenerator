@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 picturesafe media/data/bank GmbH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package de.picturesafe.search.querygenerator.views.main;
 
 import com.vaadin.flow.component.AbstractField;
@@ -11,6 +27,7 @@ import com.vaadin.flow.component.textfield.NumberField;
 import com.vaadin.flow.component.textfield.TextField;
 import de.picturesafe.search.elasticsearch.config.ElasticsearchType;
 import de.picturesafe.search.elasticsearch.config.FieldConfiguration;
+import de.picturesafe.search.expression.BoostableExpression;
 import de.picturesafe.search.expression.DayExpression;
 import de.picturesafe.search.expression.DayRangeExpression;
 import de.picturesafe.search.expression.Expression;
@@ -25,25 +42,36 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.BOOLEAN;
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.COMPLETION;
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.NESTED;
+import static de.picturesafe.search.elasticsearch.config.ElasticsearchType.OBJECT;
+import static de.picturesafe.search.querygenerator.views.main.util.FieldConfigurationUtils.elasticType;
 
 public class FieldPanel extends HorizontalLayout implements ExpressionPanel, QueryLayout {
 
     private enum ExpressionType {VALUE, QUERY_STRING, KEYWORD, RANGE, IN, DAY, DAY_RANGE}
 
+    private final static Set<ElasticsearchType> UNSUPPORTED_ELASTIC_TYPES = EnumSet.of(NESTED, OBJECT, COMPLETION);
+
     private final Select<FieldConfiguration> fieldSelector;
     private Select<ExpressionType> expressionSelector;
     private final List<AbstractField<?, ?>> valueFields = new ArrayList<>();
+    private NumberField boostField;
+    private final Set<ExpressionType> boostableExpressions = EnumSet.of(ExpressionType.VALUE, ExpressionType.QUERY_STRING, ExpressionType.IN);
 
     @SuppressWarnings("unchecked")
     public FieldPanel(List<? extends FieldConfiguration> fieldConfigurations) {
         fieldSelector = new Select<>();
         fieldSelector.setItemLabelGenerator(FieldConfiguration::getName);
-        fieldSelector.setItems((List<FieldConfiguration>) fieldConfigurations);
+        fieldSelector.setItems(filterSupportedTypes(fieldConfigurations));
 		fieldSelector.setLabel("Field");
 		fieldSelector.setWidth(FIELD_WIDTH);
 		fieldSelector.addValueChangeListener(this::selectField);
@@ -53,32 +81,37 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
 		fieldSelector.focus();
     }
 
+    private List<FieldConfiguration> filterSupportedTypes(List<? extends FieldConfiguration> fieldConfigurations) {
+        return fieldConfigurations.stream().filter(this::isSupported).sorted(Comparator.comparing(FieldConfiguration::getName)).collect(Collectors.toList());
+    }
+
+    private boolean isSupported(FieldConfiguration fieldConfiguration) {
+        return !UNSUPPORTED_ELASTIC_TYPES.contains(elasticType(fieldConfiguration));
+    }
+
     private void selectField(AbstractField.ComponentValueChangeEvent<Select<FieldConfiguration>, FieldConfiguration> event) {
         clear();
-        final FieldConfiguration fieldConfiguration = event.getValue();
-        final ElasticsearchType elasticType = elasticType(fieldConfiguration);
-        if (elasticType != ElasticsearchType.OBJECT && elasticType != ElasticsearchType.NESTED && elasticType != ElasticsearchType.COMPLETION) {
-            addExpressionSelector(fieldConfiguration, elasticType);
-        }
+        addExpressionSelector(event.getValue());
 	}
-
-    private ElasticsearchType elasticType(FieldConfiguration fieldConfiguration) {
-        return ElasticsearchType.valueOf(fieldConfiguration.getElasticsearchType().toUpperCase(Locale.ROOT));
-    }
 
 	private void clear() {
         if (expressionSelector != null) {
             remove(expressionSelector);
         }
-        removeValueFields();
+        removeFields();
     }
 
-    private void removeValueFields() {
+    private void removeFields() {
         valueFields.forEach(this::remove);
         valueFields.clear();
+        if (boostField != null) {
+            remove(boostField);
+            boostField = null;
+        }
     }
 
-    private void addExpressionSelector(FieldConfiguration fieldConfiguration, ElasticsearchType elasticType) {
+    private void addExpressionSelector(FieldConfiguration fieldConfiguration) {
+        final ElasticsearchType elasticType = elasticType(fieldConfiguration);
         final Set<ExpressionType> expressionTypes = expressionTypes(fieldConfiguration, elasticType);
         expressionSelector = new Select<>();
         expressionSelector.setItems(expressionTypes);
@@ -110,7 +143,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
     }
 
 	private void selectExpression(ExpressionType expressionType, ElasticsearchType elasticType) {
-        removeValueFields();
+        removeFields();
 
         if (expressionType == ExpressionType.RANGE || expressionType == ExpressionType.DAY_RANGE) {
             addValueField(expressionType, elasticType, "From", true);
@@ -120,6 +153,10 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         } else {
             addValueField(expressionType, elasticType, "Value", true);
         }
+
+        if (boostableExpressions.contains(expressionType)) {
+            addBoostField();
+        }
     }
 
     private void addValueField(ExpressionType expressionType, ElasticsearchType elasticType, String label, boolean focus) {
@@ -127,7 +164,7 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         switch (expressionType) {
             case VALUE:
             case RANGE:
-                if (elasticType == ElasticsearchType.BOOLEAN) {
+                if (elasticType == BOOLEAN) {
                     final Select<Boolean> selector = new Select<>(Boolean.TRUE, Boolean.FALSE);
                     selector.setValue(Boolean.TRUE);
                     selector.setLabel(label);
@@ -170,6 +207,16 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         return textField;
     }
 
+    private void addBoostField() {
+        boostField = new NumberField("Boost");
+        boostField.setWidth("50px");
+        boostField.setMin(0.1);
+        boostField.setMax(10.0);
+        boostField.setStep(0.1);
+        boostField.setErrorMessage("Set number from 0.1 to 10.0");
+        add(boostField);
+    }
+
     @Override
     public Expression getExpression() {
         if (fieldSelector.isEmpty()) {
@@ -177,24 +224,36 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
         }
 
         final String fieldName = fieldSelector.getValue().getName();
+        final Expression expression;
         switch (expressionSelector.getValue()) {
             case VALUE:
-                return isEmptyValue(0) ? new IsNullExpression(fieldName) : new ValueExpression(fieldName, value(0));
+                expression = isEmptyValue(0) ? new IsNullExpression(fieldName) : new ValueExpression(fieldName, value(0));
+                break;
             case QUERY_STRING:
-                return new ValueExpression(fieldName, stringValue(0));
+                expression = new ValueExpression(fieldName, stringValue(0));
+                break;
             case KEYWORD:
-                return isEmptyValue(0) ? new IsNullExpression(fieldName) : new KeywordExpression(fieldName, stringValue(0));
+                expression = isEmptyValue(0) ? new IsNullExpression(fieldName) : new KeywordExpression(fieldName, stringValue(0));
+                break;
             case RANGE:
-                return new RangeValueExpression(fieldName, value(0), value(1));
+                expression = new RangeValueExpression(fieldName, value(0), value(1));
+                break;
             case IN:
-                return isEmptyValue(0) ? new IsNullExpression(fieldName) : new InExpression(fieldName, inValues(0));
+                expression = isEmptyValue(0) ? new IsNullExpression(fieldName) : new InExpression(fieldName, inValues(0));
+                break;
             case DAY:
-                return isEmptyValue(0) ? new IsNullExpression(fieldName) : new DayExpression(fieldName, dateValue(0));
+                expression = isEmptyValue(0) ? new IsNullExpression(fieldName) : new DayExpression(fieldName, dateValue(0));
+                break;
             case DAY_RANGE:
-                return new DayRangeExpression(fieldName, dateValue(0), dateValue(1));
+                expression = new DayRangeExpression(fieldName, dateValue(0), dateValue(1));
+                break;
             default:
-                return new EmptyExpression();
+                expression = new EmptyExpression();
         }
+
+        return (hasBoost() && expression instanceof BoostableExpression)
+                ? ((BoostableExpression<?>) expression).boost(boostField.getValue().floatValue())
+                : expression;
     }
 
     private boolean isEmptyValue(int index) {
@@ -231,5 +290,9 @@ public class FieldPanel extends HorizontalLayout implements ExpressionPanel, Que
             default:
                 return values;
         }
+    }
+
+    private boolean hasBoost() {
+        return boostField != null && boostField.getValue() != null;
     }
 }

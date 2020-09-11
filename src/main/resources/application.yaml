@@ -6,3 +6,4 @@ server:
 # Logging configuration
 logging.level.ROOT: INFO
 logging.level.de.picturesafe: INFO
+logging.level.de.picturesafe.search.querygenerator: DEBUG
