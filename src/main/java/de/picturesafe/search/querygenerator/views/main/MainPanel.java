@@ -16,7 +16,9 @@
 
 package de.picturesafe.search.querygenerator.views.main;
 
+import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -95,9 +97,11 @@ public class MainPanel extends VerticalLayout implements QueryLayout {
 		connectPanel = new HorizontalLayout(addressField, connectButton);
 		connectPanel.setVerticalComponentAlignment(Alignment.END, connectButton);
 
+		final Anchor picturesafeSearchLink = new Anchor("https://picturesafe-search.io/", "picturesafe-search");
+		picturesafeSearchLink.setTarget("_blank");
 		add(
 				new H2("Elasticsearch Query Generator"),
-				new H3("powered by picturesafe-search"),
+				new H3(new Text("powered by "), picturesafeSearchLink),
 				connectPanel
 		);
 	}

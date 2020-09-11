@@ -71,7 +71,7 @@ public class SortOptionPanel extends HorizontalLayout implements QueryLayout {
         } else if (directionSelector == null) {
             directionSelector = new Select<>(SortOption.Direction.ASC, SortOption.Direction.DESC);
             directionSelector.setLabel("Direction");
-            directionSelector.setWidth("80px");
+            directionSelector.setWidth("88px");
             directionSelector.setValue(SortOption.Direction.ASC);
             add(directionSelector);
         }
